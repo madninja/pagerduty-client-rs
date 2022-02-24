@@ -20,7 +20,9 @@ where
 /// See: [Get a
 /// User](https://developer.pagerduty.com/api-reference/b3A6Mjc0ODIzNQ-get-a-user)
 pub async fn get(client: &Client, id: &str) -> Result<User> {
-    client.get("user", &format!("/users/{}", id), NO_QUERY).await
+    client
+        .get("user", &format!("/users/{}", id), NO_QUERY)
+        .await
 }
 
 #[cfg(test)]
