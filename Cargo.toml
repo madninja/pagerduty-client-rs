@@ -3,9 +3,9 @@ name = "pagerduty-client"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/helium/bonusly-rs"
+repository = "https://github.com/madninja/pagerduty-client-rs"
 readme = "README.md"
-description = "An async library for the bonus.ly REST API"
+description = "An async library for the PagerDuty REST API"
 authors = ["Marc Nijdam <marc@helium.com>"]
 
 [features]
@@ -21,7 +21,7 @@ serde_json = "1"
 http-serde = "1"
 chrono = {version = "0", features = ["serde"]}
 chrono-tz = {version = "0", features = ["serde"]}
-http = "*"
+http = "0"
 dotenv = "0"
 async-trait = "0"
 
