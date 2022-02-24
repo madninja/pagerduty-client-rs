@@ -1,0 +1,30 @@
+[package]
+name = "pagerduty-client"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/helium/bonusly-rs"
+readme = "README.md"
+description = "An async library for the bonus.ly REST API"
+authors = ["Marc Nijdam <marc@helium.com>"]
+
+[features]
+default = []
+teams = []
+
+[dependencies]
+reqwest = {version = "0", default-features=false, features = ["gzip", "json", "rustls-tls"]}
+futures = "0"
+thiserror = "1"
+serde =  {version = "1", features=["derive"]}
+serde_json = "1"
+http-serde = "1"
+chrono = {version = "0", features = ["serde"]}
+chrono-tz = {version = "0", features = ["serde"]}
+http = "*"
+dotenv = "0"
+async-trait = "0"
+
+[dev-dependencies]
+tokio = {version = "1", features = ["full"]}
+
