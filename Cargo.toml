@@ -10,9 +10,9 @@ authors = ["Marc Nijdam <marc@helium.com>"]
 
 [features]
 default = []
-teams = []
 
 [dependencies]
+pagerduty-macros = {path = "macros"}
 reqwest = {version = "0", default-features=false, features = ["gzip", "json", "rustls-tls"]}
 futures = "0"
 thiserror = "1"

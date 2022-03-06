@@ -1,19 +1,30 @@
-mod escalation_policy;
-mod oncall;
-mod reference;
-mod schedule;
-mod service;
-#[cfg(feature = "team")]
-#[cfg_attr(docsrs, doc(cfg(feature = "team")))]
-mod team;
-mod user;
+pub mod escalation_policy;
+pub mod oncall;
+pub mod reference;
+pub mod schedule;
+pub mod service;
+pub mod user;
+pub mod webhook;
 
-pub use escalation_policy::{EscalationPolicy, EscalationRule};
+pub use escalation_policy::{EscalationPolicy, EscalationRule, Model as EscalationPolicyModel};
 pub use oncall::OnCall;
-pub use reference::{Reference, ReferenceType};
-pub use schedule::Schedule;
-pub use service::Service;
-#[cfg(feature = "team")]
-#[cfg_attr(docsrs, doc(cfg(feature = "team")))]
-pub use team::Team;
-pub use user::User;
+pub use pagerduty_macros::BaseModel;
+pub use reference::Reference;
+pub use schedule::{Model as ScheduleModel, Schedule};
+pub use service::{Model as ServiceModel, Service};
+pub use user::{Model as UserModel, User};
+pub use webhook::Webhook;
+
+use http::Uri;
+
+pub trait BaseModel {
+    fn id(&self) -> &str;
+    fn summary(&self) -> &str;
+    fn html_url(&self) -> &Uri;
+}
+
+impl PartialEq for dyn BaseModel {
+    fn eq(&self, other: &(dyn BaseModel)) -> bool {
+        self.id() == other.id()
+    }
+}

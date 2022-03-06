@@ -1,6 +1,7 @@
 use async_trait::async_trait;
-use futures::{future, stream, Future as StdFuture, FutureExt, Stream as StdStream, TryFutureExt};
-use models::{Reference, ReferenceType};
+use futures::{
+    future, stream, Future as StdFuture, FutureExt, Stream as StdStream, StreamExt, TryFutureExt,
+};
 use reqwest::{self, header};
 use serde::{de::DeserializeOwned, ser::Serialize};
 use std::{collections::HashMap, env, pin::Pin, time::Duration};
@@ -13,9 +14,6 @@ pub mod models;
 pub mod oncalls;
 pub mod schedules;
 pub mod services;
-#[cfg(feature = "ecc608")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ecc608")))]
-pub mod teams;
 pub mod users;
 
 /// A type alias for `Future` that may return `crate::error::Error`
@@ -23,7 +21,7 @@ pub type Future<T> = Pin<Box<dyn StdFuture<Output = Result<T>> + Send>>;
 
 /// A type alias for `Stream` that may result in `crate::error::Error`
 pub type Stream<T> = Pin<Box<dyn StdStream<Item = Result<T>> + Send>>;
-pub use futures::StreamExt;
+pub use models::{BaseModel, Reference};
 
 pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 pub const BASE_URL: &str = "https://api.pagerduty.com";
@@ -253,61 +251,10 @@ pub(crate) fn env_var<T: std::str::FromStr>(name: &str) -> Result<T> {
         })
 }
 
-impl<T: ?Sized> IntoVec for T where T: StdStream {}
-
-#[async_trait]
-pub trait IntoVec: StreamExt {
-    async fn into_vec<T>(self) -> Result<Vec<T>>
-    where
-        Self: Sized,
-        T: std::marker::Send,
-        Vec<Result<T>>: Extend<Self::Item>,
-    {
-        self.collect::<Vec<Result<T>>>().await.into_iter().collect()
-    }
-}
+pub use pagerduty_macros::Dereference;
 
 #[async_trait]
 pub trait Dereference {
     type Output;
     async fn dereference(&self, client: &Client) -> Result<Self::Output>;
 }
-
-macro_rules! impl_dereference {
-    ($reference: expr, $model: ty, $module: ident) => {
-        #[async_trait]
-        impl Dereference for Reference<$model> {
-            type Output = $model;
-
-            async fn dereference(&self, client: &Client) -> Result<Self::Output> {
-                match &self.r#type {
-                    $reference => $module::get(client, &self.id).await,
-                    other => Err(Error::custom(format!(
-                        "unexpected refernce type {:?}",
-                        other
-                    ))),
-                }
-            }
-        }
-
-        #[async_trait]
-        impl Dereference for Vec<Reference<$model>> {
-            type Output = Vec<$model>;
-            async fn dereference(&self, client: &Client) -> Result<Self::Output> {
-                let results =
-                    futures::future::join_all(self.iter().map(|entry| entry.dereference(client)))
-                        .await;
-                results.into_iter().collect()
-            }
-        }
-    };
-}
-
-impl_dereference!(ReferenceType::User, models::User, users);
-impl_dereference!(ReferenceType::Schedule, models::Schedule, schedules);
-impl_dereference!(ReferenceType::Service, models::Service, services);
-impl_dereference!(
-    ReferenceType::EscalationPolicy,
-    models::EscalationPolicy,
-    escalation_policies
-);

@@ -17,15 +17,15 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{oncalls, Client, IntoVec, StreamExt, NO_QUERY};
+    use crate::{models, oncalls, Client, StreamExt, TryStreamExt, NO_QUERY};
     use tokio::test;
 
     #[test]
     async fn all() {
         let client = Client::from_env("test.env").expect("client");
-        let oncalls = oncalls::all(&client, 10, NO_QUERY)
+        let oncalls: Vec<models::OnCall> = oncalls::all(&client, 10, NO_QUERY)
             .take(10)
-            .into_vec()
+            .try_collect()
             .await
             .expect("oncalls");
         assert!(oncalls.len() > 0);

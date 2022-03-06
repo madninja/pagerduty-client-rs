@@ -1,0 +1,14 @@
+[package]
+name = "pagerduty-macros"
+version = "0.1.0"
+authors = ["marc@helium.com"]
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1", features = ["full", "fold"] }
+quote = "1"
+proc-macro2 = "1"
+darling = "0"

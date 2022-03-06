@@ -1,9 +1,20 @@
+use crate::{BaseModel, Dereference, Reference};
 use chrono::{DateTime, Utc};
 use http::Uri;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct Service {
+#[derive(Debug, Clone, Deserialize, BaseModel, Dereference)]
+#[dereference(client = "services")]
+#[serde(tag = "type")]
+pub enum Service {
+    #[serde(rename = "service_reference")]
+    Reference(Reference),
+    #[serde(rename = "service")]
+    Model(Model),
+}
+
+#[derive(Debug, Clone, Deserialize, BaseModel)]
+pub struct Model {
     pub id: String,
     pub name: String,
     pub summary: String,

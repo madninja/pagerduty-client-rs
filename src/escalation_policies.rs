@@ -1,11 +1,11 @@
-use crate::{models::EscalationPolicy, Client, Result, Stream, NO_QUERY};
+use crate::{models::EscalationPolicyModel, Client, Result, Stream, NO_QUERY};
 use serde::Serialize;
 
 /// Get a service by its id
 ///
 /// See: [Get an
 /// Escalation Policy](https://developer.pagerduty.com/api-reference/b3A6Mjc0ODEyNg-get-an-escalation-policy)
-pub async fn get(client: &Client, id: &str) -> Result<EscalationPolicy> {
+pub async fn get(client: &Client, id: &str) -> Result<EscalationPolicyModel> {
     client
         .get(
             "escalation_policy",
@@ -19,7 +19,11 @@ pub async fn get(client: &Client, id: &str) -> Result<EscalationPolicy> {
 ///
 /// See: [List
 /// Escalation Policies](https://developer.pagerduty.com/api-reference/b3A6Mjc0ODEyNA-list-escalation-policies)
-pub fn all<Q>(client: &Client, page_size: usize, params: &'static Q) -> Stream<EscalationPolicy>
+pub fn all<Q>(
+    client: &Client,
+    page_size: usize,
+    params: &'static Q,
+) -> Stream<EscalationPolicyModel>
 where
     Q: Serialize + ?Sized + std::marker::Sync,
 {
@@ -33,7 +37,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{env_var, escalation_policies, Client, IntoVec, NO_QUERY};
+    use crate::{
+        env_var, escalation_policies, models::EscalationPolicy, Client, TryStreamExt, NO_QUERY,
+    };
     use tokio::test;
 
     #[test]
@@ -45,14 +51,18 @@ mod test {
             .await
             .expect("escalation_policy");
 
-        assert_eq!(policy_id, policy.id);
+        let id = match policy {
+            EscalationPolicy::Model(m) => m.id,
+            EscalationPolicy::Reference(r) => r.id,
+        };
+        assert_eq!(policy_id, id);
     }
 
     #[test]
     async fn all() {
         let client = Client::from_env("test.env").expect("client");
-        let policies = escalation_policies::all(&client, 2, NO_QUERY)
-            .into_vec()
+        let policies: Vec<EscalationPolicy> = escalation_policies::all(&client, 2, NO_QUERY)
+            .try_collect()
             .await
             .expect("escalation policies");
 

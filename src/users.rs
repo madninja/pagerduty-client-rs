@@ -1,4 +1,4 @@
-use crate::{models::User, Client, Result, Stream, NO_QUERY};
+use crate::{models::user::Model as UserModel, Client, Result, Stream, NO_QUERY};
 use serde::Serialize;
 
 /// Get all users as an automatically paged Stream.
@@ -8,7 +8,7 @@ use serde::Serialize;
 ///
 /// See: [List
 /// Users](https://developer.pagerduty.com/api-reference/b3A6Mjc0ODIzMw-list-users)
-pub fn all<Q>(client: &Client, page_size: usize, params: &'static Q) -> Stream<User>
+pub fn all<Q>(client: &Client, page_size: usize, params: &'static Q) -> Stream<UserModel>
 where
     Q: Serialize + ?Sized + std::marker::Sync,
 {
@@ -19,7 +19,7 @@ where
 ///
 /// See: [Get a
 /// User](https://developer.pagerduty.com/api-reference/b3A6Mjc0ODIzNQ-get-a-user)
-pub async fn get(client: &Client, id: &str) -> Result<User> {
+pub async fn get(client: &Client, id: &str) -> Result<UserModel> {
     client
         .get("user", &format!("/users/{}", id), NO_QUERY)
         .await
@@ -27,15 +27,15 @@ pub async fn get(client: &Client, id: &str) -> Result<User> {
 
 #[cfg(test)]
 mod test {
-    use crate::{env_var, users, Client, IntoVec, StreamExt, NO_QUERY};
+    use crate::{env_var, models, users, BaseModel, Client, StreamExt, TryStreamExt, NO_QUERY};
     use tokio::test;
 
     #[test]
     async fn all() {
         let client = Client::from_env("test.env").expect("client");
-        let users = users::all(&client, 10, NO_QUERY)
+        let users: Vec<models::UserModel> = users::all(&client, 10, NO_QUERY)
             .take(10)
-            .into_vec()
+            .try_collect()
             .await
             .expect("users");
         assert_eq!(users.len(), 10);
@@ -44,11 +44,8 @@ mod test {
     #[test]
     async fn get() {
         let client = Client::from_env("test.env").expect("client");
-        let _ = users::get(
-            &client,
-            &env_var::<String>("PAGERDUTY_TEST_USER").expect("test user id"),
-        )
-        .await
-        .expect("user");
+        let user_id = &env_var::<String>("PAGERDUTY_TEST_USER").expect("test user id");
+        let user = users::get(&client, user_id).await.expect("user");
+        assert_eq!(user.id(), user_id);
     }
 }
