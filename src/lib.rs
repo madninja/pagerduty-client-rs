@@ -248,11 +248,13 @@ where
             match error_status {
                 true => json
                     .remove(key)
-                    .ok_or_else(|| Error::api_error(format!("key \"{}\" not found in result", key)))
+                    .ok_or_else(|| Error::api_error(format!("key \"{key}\" not found in result")))
                     .and_then(|value| serde_json::from_value::<T>(value).map_err(Error::from)),
                 false => json
                     .remove("error")
-                    .ok_or_else(|| Error::api_error(format!("key \"error\" not found in result")))
+                    .ok_or_else(|| {
+                        Error::api_error("key \"error\" not found in result".to_string())
+                    })
                     .and_then(|value| Err(Error::from_json_error(value))),
             }
         })
