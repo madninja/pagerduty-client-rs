@@ -2,18 +2,19 @@ use async_trait::async_trait;
 use futures::{
     future, stream, Future as StdFuture, FutureExt, Stream as StdStream, StreamExt, TryFutureExt,
 };
-use reqwest::{self, header};
+use reqwest::{self, header, Method};
 use serde::{de::DeserializeOwned, ser::Serialize};
 use std::{collections::HashMap, env, pin::Pin, time::Duration};
 
 mod result;
-pub use result::{Error, Result};
+pub use result::{Error, ResponseError, Result};
 
 pub mod escalation_policies;
 pub mod models;
 pub mod oncalls;
 pub mod schedules;
 pub mod services;
+pub mod tags;
 pub mod users;
 
 /// A type alias for `Future` that may return `crate::error::Error`
@@ -86,29 +87,7 @@ impl Client {
             .query(add_query)
             .send()
             .map_err(Error::from)
-            .and_then(|result| match result.error_for_status() {
-                Ok(result) => {
-                    let key_path = key.to_owned();
-                    let fut: Future<T> = result
-                        .json::<HashMap<String, serde_json::Value>>()
-                        .map_err(Error::from)
-                        .and_then(|mut json| async move {
-                            json.remove(&key_path)
-                                .ok_or_else(|| {
-                                    Error::api_error(format!(
-                                        "key \"{}\" not found in result",
-                                        key_path
-                                    ))
-                                })
-                                .and_then(|value| {
-                                    serde_json::from_value::<T>(value).map_err(Error::from)
-                                })
-                        })
-                        .boxed();
-                    fut
-                }
-                Err(e) => future::err(Error::from(e)).boxed(),
-            })
+            .and_then(move |result| extract_result(key, result))
             .boxed()
     }
 
@@ -181,61 +160,59 @@ impl Client {
     //     self.submit(Method::PUT, path, json)
     // }
 
-    // pub(crate) fn post<T, R>(&self, path: &str, json: &T) -> Future<R>
-    // where
-    //     T: Serialize + ?Sized,
-    //     R: 'static + DeserializeOwned + std::marker::Send,
-    // {
-    //     self.submit(Method::POST, path, json)
-    // }
+    pub(crate) fn post<T, R>(&self, key: &'static str, path: &str, json: &T) -> Future<R>
+    where
+        T: Serialize + ?Sized,
+        R: 'static + DeserializeOwned + std::marker::Send + std::fmt::Debug,
+    {
+        self.submit(Method::POST, key, path, json)
+    }
 
-    // fn submit<T, R>(&self, method: Method, path: &str, json: &T) -> Future<R>
-    // where
-    //     T: Serialize + ?Sized,
-    //     R: 'static + DeserializeOwned + std::marker::Send,
-    // {
-    //     let request_url = format!("{}{}", self.base_url, path);
-    //     self.client
-    //         .request(method, &request_url)
-    //         .json(json)
-    //         .send()
-    //         .map_err(Error::from)
-    //         .and_then(|response| match response.error_for_status() {
-    //             Ok(result) => {
-    //                 let fut: Future<R> = result
-    //                     .json::<Response<R>>()
-    //                     .map_err(Error::from)
-    //                     .and_then(|response| async { Result::from(response) })
-    //                     .boxed();
-    //                 fut
-    //             }
-    //             Err(e) => future::err(Error::from(e)).boxed(),
-    //         })
-    //         .boxed()
-    // }
+    fn submit<T, R>(&self, method: Method, key: &'static str, path: &str, json: &T) -> Future<R>
+    where
+        T: Serialize + ?Sized,
+        R: 'static + DeserializeOwned + std::marker::Send + std::fmt::Debug,
+    {
+        let request_url = format!("{}{}", self.base_url, path);
+        self.client
+            .request(method, &request_url)
+            .json(json)
+            .send()
+            .map_err(Error::from)
+            .and_then(move |response| extract_result(key, response))
+            .boxed()
 
-    // pub(crate) fn delete<R>(&self, path: &str) -> Future<R>
-    // where
-    //     R: 'static + DeserializeOwned + std::marker::Send,
-    // {
-    //     let request_url = format!("{}{}", self.base_url, path);
-    //     self.client
-    //         .delete(&request_url)
-    //         .send()
-    //         .map_err(Error::from)
-    //         .and_then(|response| match response.error_for_status() {
-    //             Ok(result) => {
-    //                 let fut: Future<R> = result
-    //                     .json::<Response<R>>()
-    //                     .map_err(Error::from)
-    //                     .and_then(|response| async { Result::from(response) })
-    //                     .boxed();
-    //                 fut
-    //             }
-    //             Err(e) => future::err(Error::from(e)).boxed(),
-    //         })
-    //         .boxed()
-    // }
+        //     match response.error_for_status() {
+        //     Ok(result) => result
+        //         .json::<HashMap<String, serde_json::Value>>()
+        //         .map_err(Error::from)
+        //         .and_then(move |mut json| async move {
+        //             json.remove(key)
+        //                 .ok_or_else(|| {
+        //                     Error::api_error(format!("key \"{}\" not found in result", key))
+        //                 })
+        //                 .and_then(|value| {
+        //                     serde_json::from_value::<R>(value).map_err(Error::from)
+        //                 })
+        //         })
+        //         .boxed(),
+        //     Err(e) => future::err(Error::response(e, response)).boxed(),
+        // })
+        // .boxed()
+    }
+
+    pub(crate) fn delete(&self, path: &str) -> Future<()> {
+        let request_url = format!("{}{}", self.base_url, path);
+        self.client
+            .delete(&request_url)
+            .send()
+            .map_err(Error::from)
+            .and_then(|response| match response.error_for_status() {
+                Ok(_result) => future::ok(()),
+                Err(e) => future::err(Error::from(e)),
+            })
+            .boxed()
+    }
 }
 
 fn token_from_env() -> Result<String> {
@@ -257,4 +234,27 @@ pub use pagerduty_macros::Dereference;
 pub trait Dereference {
     type Output;
     async fn dereference(&self, client: &Client) -> Result<Self::Output>;
+}
+
+fn extract_result<T>(key: &'static str, result: reqwest::Response) -> Future<T>
+where
+    T: 'static + DeserializeOwned + std::marker::Send + std::fmt::Debug,
+{
+    let error_status = result.error_for_status_ref().is_ok();
+    result
+        .json::<HashMap<String, serde_json::Value>>()
+        .map_err(Error::from)
+        .and_then(move |mut json| async move {
+            match error_status {
+                true => json
+                    .remove(key)
+                    .ok_or_else(|| Error::api_error(format!("key \"{}\" not found in result", key)))
+                    .and_then(|value| serde_json::from_value::<T>(value).map_err(Error::from)),
+                false => json
+                    .remove("error")
+                    .ok_or_else(|| Error::api_error(format!("key \"error\" not found in result")))
+                    .and_then(|value| Err(Error::from_json_error(value))),
+            }
+        })
+        .boxed()
 }

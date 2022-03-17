@@ -27,7 +27,8 @@ pub async fn get(client: &Client, id: &str) -> Result<ScheduleModel> {
 
 #[cfg(test)]
 mod test {
-    use crate::{env_var, models, schedules, BaseModel, Client, StreamExt, TryStreamExt, NO_QUERY};
+    use crate::{env_var, models, schedules, BaseModel, Client, StreamExt, NO_QUERY};
+    use futures::TryStreamExt;
     use tokio::test;
 
     #[test]

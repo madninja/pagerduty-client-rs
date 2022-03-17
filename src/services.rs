@@ -24,7 +24,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{env_var, models, services, BaseModel, Client, TryStreamExt, NO_QUERY};
+    use crate::{env_var, models, services, BaseModel, Client, NO_QUERY};
+    use futures::TryStreamExt;
     use tokio::test;
 
     #[test]

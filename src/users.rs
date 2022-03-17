@@ -27,7 +27,8 @@ pub async fn get(client: &Client, id: &str) -> Result<UserModel> {
 
 #[cfg(test)]
 mod test {
-    use crate::{env_var, models, users, BaseModel, Client, StreamExt, TryStreamExt, NO_QUERY};
+    use crate::{env_var, models, users, BaseModel, Client, StreamExt, NO_QUERY};
+    use futures::TryStreamExt;
     use tokio::test;
 
     #[test]
@@ -47,5 +48,14 @@ mod test {
         let user_id = &env_var::<String>("PAGERDUTY_TEST_USER").expect("test user id");
         let user = users::get(&client, user_id).await.expect("user");
         assert_eq!(user.id(), user_id);
+    }
+
+    #[test]
+    async fn not_found() {
+        let client = Client::from_env("test.env").expect("client");
+        let user_id = "none";
+        let _err = users::get(&client, user_id)
+            .await
+            .expect_err("lookup error");
     }
 }

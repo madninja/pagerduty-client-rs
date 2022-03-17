@@ -3,6 +3,7 @@ pub mod oncall;
 pub mod reference;
 pub mod schedule;
 pub mod service;
+pub mod tag;
 pub mod user;
 pub mod webhook;
 
@@ -12,6 +13,7 @@ pub use pagerduty_macros::BaseModel;
 pub use reference::Reference;
 pub use schedule::{Model as ScheduleModel, Schedule};
 pub use service::{Model as ServiceModel, Service};
+pub use tag::Tag;
 pub use user::{Model as UserModel, User};
 pub use webhook::Webhook;
 

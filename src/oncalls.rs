@@ -17,7 +17,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{models, oncalls, Client, StreamExt, TryStreamExt, NO_QUERY};
+    use crate::{models, oncalls, Client, StreamExt, NO_QUERY};
+    use futures::TryStreamExt;
     use tokio::test;
 
     #[test]

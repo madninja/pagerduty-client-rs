@@ -38,8 +38,10 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        env_var, escalation_policies, models::EscalationPolicy, Client, TryStreamExt, NO_QUERY,
+        env_var, escalation_policies, models::EscalationPolicyModel, BaseModel, Client, NO_QUERY,
     };
+    use futures::TryStreamExt;
+
     use tokio::test;
 
     #[test]
@@ -51,17 +53,13 @@ mod test {
             .await
             .expect("escalation_policy");
 
-        let id = match policy {
-            EscalationPolicy::Model(m) => m.id,
-            EscalationPolicy::Reference(r) => r.id,
-        };
-        assert_eq!(policy_id, id);
+        assert_eq!(policy_id, policy.id());
     }
 
     #[test]
     async fn all() {
         let client = Client::from_env("test.env").expect("client");
-        let policies: Vec<EscalationPolicy> = escalation_policies::all(&client, 2, NO_QUERY)
+        let policies: Vec<EscalationPolicyModel> = escalation_policies::all(&client, 2, NO_QUERY)
             .try_collect()
             .await
             .expect("escalation policies");
